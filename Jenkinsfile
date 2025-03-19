@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION = 'us-east-1'
-        BUCKET_NAME_MAIN = 'sefali-main-bucket'
-        BUCKET_NAME_UT1234 = 'sefali-ut1234-bucket'
+        BUCKET_NAME = 'sefali-terraform-bucket' // Single bucket from Terraform
         SLACK_CHANNEL = '#jenkins'
         SLACK_WEBHOOK_URL = credentials('slack-webhook')
     }
@@ -19,38 +18,22 @@ pipeline {
             }
         }
 
-        // Deploy to Main
-        stage('Deploy to Main Bucket') {
+        // Deploy to S3 based on branch
+        stage('Deploy to S3 Bucket') {
             when {
-                expression { env.GIT_BRANCH == 'origin/main' }
-            }
-            steps {
-                script {
-                    withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_ACCESS_KEY_ID_1']
-                    ]) {
-                        sh '''
-                        echo "Deploying index.html to Main Bucket: $BUCKET_NAME_MAIN"
-                        aws s3 cp index.html s3://$BUCKET_NAME_MAIN --region $AWS_REGION --acl public-read
-                        '''
-                    }
+                anyOf {
+                    expression { env.GIT_BRANCH == 'main' }
+                    expression { env.GIT_BRANCH == 'UT-1234' }
                 }
             }
-        }
-
-        // Deploy to UT-1234
-        stage('Deploy to UT-1234 Bucket') {
-            when {
-                expression { env.GIT_BRANCH == 'origin/UT-1234' }
-            }
             steps {
                 script {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_ACCESS_KEY_ID_1']
                     ]) {
                         sh '''
-                        echo "Deploying index.html to UT-1234 Bucket: $BUCKET_NAME_UT1234"
-                        aws s3 cp index.html s3://$BUCKET_NAME_UT1234 --region $AWS_REGION --acl public-read
+                        echo "Deploying index.html to S3 Bucket: $BUCKET_NAME"
+                        aws s3 cp index.html s3://$BUCKET_NAME --region $AWS_REGION --acl public-read
                         '''
                     }
                 }

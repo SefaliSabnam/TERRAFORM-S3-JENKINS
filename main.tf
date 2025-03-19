@@ -1,10 +1,18 @@
 # Create S3 Bucket
 resource "aws_s3_bucket" "portfolio" {
   bucket = var.bucket_name
+}
 
-  website {
-    index_document = "index.html"
-    error_document = "index.html"
+# Configure S3 bucket for website hosting
+resource "aws_s3_bucket_website_configuration" "portfolio" {
+  bucket = aws_s3_bucket.portfolio.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html"
   }
 }
 
@@ -53,7 +61,7 @@ resource "aws_s3_object" "index" {
   content_type = "text/html"
 }
 
-# Output the S3 website URL (replace deprecated attribute)
+# Output the S3 website URL
 output "s3_website_url" {
-  value = aws_s3_bucket.portfolio.website_domain
+  value = aws_s3_bucket_website_configuration.portfolio.website_endpoint
 }
