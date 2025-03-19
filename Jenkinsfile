@@ -70,8 +70,7 @@ pipeline {
         }
 
         stage('Skip Deployment for Other Branches') {
-            when {
-                expression {
+            when {expression {
                     env.BRANCH_NAME != 'main' && env.BRANCH_NAME != 'feature'
                 }
             }

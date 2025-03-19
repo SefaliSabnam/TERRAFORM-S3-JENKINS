@@ -5,13 +5,7 @@ variable "aws_region" {
 }
 
 variable "bucket_name" {
-  description = "S3 bucket name for website hosting"
+  description = "S3 bucket name"
   type        = string
-  default     = "sefali-portfolio-site"
-}
-
-variable "index_document" {
-  description = "Index document for S3 website"
-  type        = string
-  default     = "index.html"
+  default     = "sefali-terraform-bucket"
 }
