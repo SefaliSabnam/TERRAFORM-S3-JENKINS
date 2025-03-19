@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         AWS_REGION = 'us-east-1'
-        BUCKET_NAME = 'sefali-terraform-bucket'
+        BUCKET_NAME_MAIN = 'sefali-main-bucket'
+        BUCKET_NAME_FEATURE = 'sefali-feature-bucket'
         SLACK_CHANNEL = '#jenkins'
         SLACK_WEBHOOK_URL = credentials('slack-webhook')
     }
@@ -18,56 +19,38 @@ pipeline {
             }
         }
 
-        stage('Initialize Terraform') {
+        stage('Deploy to Main Bucket') {
+            when {
+                expression { env.GIT_BRANCH == 'origin/main' }
+            }
             steps {
                 script {
                     withCredentials([
-                        aws(credentialsId: 'AWS_ACCESS_KEY_ID_1')
+                        [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_ACCESS_KEY_ID_1']
                     ]) {
                         sh '''
-                        terraform init \
-                          -backend-config="bucket=$BUCKET_NAME" \
-                          -backend-config="region=$AWS_REGION"
+                        echo "Deploying index.html to Main Bucket: $BUCKET_NAME_MAIN"
+                        aws s3 cp index.html s3://$BUCKET_NAME_MAIN --region $AWS_REGION --acl public-read
                         '''
                     }
                 }
             }
         }
 
-        stage('Validate Terraform') {
-            steps {
-                script {
-                    sh 'terraform validate'
-                }
-            }
-        }
-
-        stage('Plan Terraform') {
-            steps {
-                script {
-                    sh 'terraform plan -out=tfplan'
-                }
-            }
-        }
-
-        stage('Apply Terraform for Main') {
-            when {
-                expression { env.GIT_BRANCH == 'origin/main' }
-            }
-            steps {
-                script {
-                    sh 'terraform apply -auto-approve tfplan'
-                }
-            }
-        }
-
-        stage('Apply Terraform for Feature') {
+        stage('Deploy to Feature Bucket') {
             when {
                 expression { env.GIT_BRANCH == 'origin/feature' }
             }
             steps {
                 script {
-                    sh 'terraform apply -auto-approve tfplan'
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_ACCESS_KEY_ID_1']
+                    ]) {
+                        sh '''
+                        echo "Deploying index.html to Feature Bucket: $BUCKET_NAME_FEATURE"
+                        aws s3 cp index.html s3://$BUCKET_NAME_FEATURE --region $AWS_REGION --acl public-read
+                        '''
+                    }
                 }
             }
         }
@@ -78,14 +61,14 @@ pipeline {
             slackSend(
                 channel: "${SLACK_CHANNEL}",
                 color: "good",
-                message: "*Terraform Deployment Succeeded!* :rocket:\nBranch: *${env.GIT_BRANCH}*"
+                message: "*Deployment Succeeded!* :rocket:\nBranch: *${env.GIT_BRANCH}*\nFile: *index.html* uploaded successfully."
             )
         }
         failure {
             slackSend(
                 channel: "${SLACK_CHANNEL}",
                 color: "danger",
-                message: "*Terraform Deployment Failed!* :x:\nBranch: *${env.GIT_BRANCH}*"
+                message: "*Deployment Failed!* :x:\nBranch: *${env.GIT_BRANCH}*\nFailed to upload *index.html*."
             )
         }
         always {
