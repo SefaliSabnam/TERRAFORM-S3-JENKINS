@@ -22,7 +22,16 @@ pipeline {
             steps {
                 script {
                     echo "Initializing Terraform..."
-                    sh 'terraform init'
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh '''
+                        terraform init \
+                        -backend-config="bucket=$BUCKET_NAME" \
+                        -backend-config="region=$AWS_REGION"
+                        '''
+                    }
                 }
             }
         }
@@ -47,7 +56,7 @@ pipeline {
 
         stage('Apply Terraform for Main') {
             when {
-                branch 'main'
+                expression { env.GIT_BRANCH == 'origin/main' }
             }
             steps {
                 script {
@@ -59,7 +68,7 @@ pipeline {
 
         stage('Apply Terraform for Feature') {
             when {
-                branch 'feature'
+                expression { env.GIT_BRANCH == 'origin/feature' }
             }
             steps {
                 script {
@@ -70,13 +79,14 @@ pipeline {
         }
 
         stage('Skip Deployment for Other Branches') {
-            when {expression {
-                    env.BRANCH_NAME != 'main' && env.BRANCH_NAME != 'feature'
+            when {
+                expression {
+                    env.GIT_BRANCH != 'origin/main' && env.GIT_BRANCH != 'origin/feature'
                 }
             }
             steps {
                 script {
-                    echo "Skipping Terraform apply for branch: ${env.BRANCH_NAME}"
+                    echo "Skipping Terraform apply for branch: ${env.GIT_BRANCH}"
                 }
             }
         }
@@ -89,23 +99,23 @@ pipeline {
                 slackSend(
                     channel: "${SLACK_CHANNEL}",
                     color: 'good',
-                    message: " *Terraform Deployment Succeeded!* :rocket:\nBranch: *${env.BRANCH_NAME}*"
+                    message: " *Terraform Deployment Succeeded!* :rocket:\nBranch: *${env.GIT_BRANCH}*"
                 )
             }
         }
         failure {
             script {
-                echo " Terraform Deployment Failed!"
+                echo "Terraform Deployment Failed!"
                 slackSend(
                     channel: "${SLACK_CHANNEL}",
                     color: 'danger',
-                    message: "*Terraform Deployment Failed!* :x:\nBranch: *${env.BRANCH_NAME}*"
+                    message: "*Terraform Deployment Failed!* :x:\nBranch: *${env.GIT_BRANCH}*"
                 )
             }
         }
         always {
             script {
-                echo " Cleaning up workspace..."
+                echo "Cleaning up workspace..."
                 cleanWs()
             }
         }
