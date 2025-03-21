@@ -1,67 +1,65 @@
-# Create S3 Bucket
-resource "aws_s3_bucket" "portfolio" {
+# Create S3 bucket
+resource "aws_s3_bucket" "static_website" {
   bucket = var.bucket_name
+
+  tags = {
+    Name        = "My Terraform S3 Bucket"
+    Environment = "Dev"
+  }
 }
 
-# Configure S3 bucket for website hosting
-resource "aws_s3_bucket_website_configuration" "portfolio" {
-  bucket = aws_s3_bucket.portfolio.id
+# Enable versioning (for state file)
+resource "aws_s3_bucket_versioning" "versioning" {
+  bucket = aws_s3_bucket.static_website.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Enable encryption for state file
+resource "aws_s3_bucket_server_side_encryption_configuration" "encryption" {
+  bucket = aws_s3_bucket.static_website.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Configure the bucket for static website hosting
+resource "aws_s3_bucket_website_configuration" "static_website_config" {
+  bucket = aws_s3_bucket.static_website.id
 
   index_document {
-    suffix = "index.html"
+    suffix = var.index_file
   }
 
   error_document {
-    key = "index.html"
+    key = var.error_file
   }
 }
 
-# Set bucket ownership to BucketOwnerPreferred
-resource "aws_s3_bucket_ownership_controls" "portfolio" {
-  bucket = aws_s3_bucket.portfolio.id
-
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-# Set public access block (optional)
-resource "aws_s3_bucket_public_access_block" "portfolio" {
-  bucket = aws_s3_bucket.portfolio.id
-
+#  Disable public access restrictions (this fixes the AccessDenied issue)
+resource "aws_s3_bucket_public_access_block" "static_website_block" {
+  bucket                  = aws_s3_bucket.static_website.id
   block_public_acls       = false
-  block_public_policy     = false
+  block_public_policy     = false   # <-- Disable this to allow public bucket policy
   ignore_public_acls      = false
   restrict_public_buckets = false
 }
 
-# Add bucket policy for public read access
-resource "aws_s3_bucket_policy" "public_access" {
-  bucket = aws_s3_bucket.portfolio.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject",
-        Effect    = "Allow",
-        Principal = "*",
-        Action    = "s3:GetObject",
-        Resource  = "${aws_s3_bucket.portfolio.arn}/*"
-      }
-    ]
-  })
-}
-
-# Upload index.html to S3 bucket
-resource "aws_s3_object" "index" {
-  bucket = aws_s3_bucket.portfolio.id
-  key    = "index.html"
-  source = "index.html"
+#  Upload index.html to the bucket
+resource "aws_s3_object" "index_html" {
+  bucket = aws_s3_bucket.static_website.id
+  key    = var.index_file
+  source = var.index_file
   content_type = "text/html"
 }
 
-# Output the S3 website URL
-output "s3_website_url" {
-  value = aws_s3_bucket_website_configuration.portfolio.website_endpoint
+#  Upload error.html to the bucket (optional)
+resource "aws_s3_object" "error_html" {
+  bucket = aws_s3_bucket.static_website.id
+  key    = var.error_file
+  source = var.error_file
+  content_type = "text/html"
 }

@@ -1,40 +1,46 @@
 pipeline {
     agent any
-
     environment {
-        AWS_REGION = 'us-east-1'
-        BUCKET_NAME = 'sefali-terraform-bucket' // Single bucket from Terraform
-        SLACK_CHANNEL = '#jenkins'
-        SLACK_WEBHOOK_URL = credentials('slack-webhook')
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID_1')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_ACCESS_KEY_ID_1')
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Terraform Init and Plan') {
             steps {
                 script {
-                    echo "Checking out the repository..."
-                    checkout scm
+                    sh '''
+                    terraform init
+                    terraform plan -out=tfplan
+                    '''
                 }
             }
         }
 
-        // Deploy to S3 based on branch
-        stage('Deploy to S3 Bucket') {
+        stage('Merge Check and Apply') {
             when {
-                anyOf {
-                    expression { env.GIT_BRANCH == 'main' }
-                    expression { env.GIT_BRANCH == 'UT-1234' }
-                }
+                branch 'main'
             }
             steps {
                 script {
-                    withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_ACCESS_KEY_ID_1']
-                    ]) {
+                    def mergeCheck = sh(script: '''
+                        git rev-list -n 1 --ancestry-path HEAD^2..HEAD || true
+                    ''', returnStdout: true).trim()
+
+                    if (mergeCheck) {
+                        echo "Merge detected! Running terraform apply..."
                         sh '''
-                        echo "Deploying index.html to S3 Bucket: $BUCKET_NAME"
-                        aws s3 cp index.html s3://$BUCKET_NAME --region $AWS_REGION --acl public-read
+                        terraform apply -auto-approve tfplan
                         '''
+                        slackNotification("Terraform apply successful! ")
+                    } else {
+                        echo "No merge detected. Skipping terraform apply."
                     }
                 }
             }
@@ -43,21 +49,18 @@ pipeline {
 
     post {
         success {
-            slackSend(
-                channel: "${SLACK_CHANNEL}",
-                color: "good",
-                message: "*Deployment Succeeded!* :rocket:\nBranch: *${env.GIT_BRANCH}*\nFile: *index.html* uploaded successfully."
-            )
+            script {
+                slackNotification("Terraform deployment successful! ")
+            }
         }
         failure {
-            slackSend(
-                channel: "${SLACK_CHANNEL}",
-                color: "danger",
-                message: "*Deployment Failed!* :x:\nBranch: *${env.GIT_BRANCH}*\nFailed to upload *index.html*."
-            )
-        }
-        always {
-            cleanWs()
+            script {
+                slackNotification("Terraform deployment failed! ")
+            }
         }
     }
+}
+
+def slackNotification(message) {
+    slackSend(channel: '#jenkins', message: message)
 }
