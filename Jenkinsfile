@@ -12,13 +12,22 @@ pipeline {
             }
         }
 
-        stage('Terraform Init and Plan') {
+        stage('Terraform Init') {
             steps {
                 script {
-                    sh '''
-                    terraform init
-                    terraform plan -out=tfplan
-                    '''
+                    def initStatus = sh(script: 'terraform init -migrate-state', returnStatus: true)
+                    if (initStatus != 0) {
+                        echo "Backend configuration changed. Running terraform init -reconfigure..."
+                        sh 'terraform init -reconfigure'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                script {
+                    sh 'terraform plan -out=tfplan'
                 }
             }
         }
@@ -29,18 +38,19 @@ pipeline {
             }
             steps {
                 script {
-                    def mergeCheck = sh(script: '''
-                        git rev-list -n 1 --ancestry-path HEAD^2..HEAD || true
-                    ''', returnStdout: true).trim()
+                    def prevCommit = sh(script: 'git rev-parse --verify --quiet $GIT_PREVIOUS_SUCCESSFUL_COMMIT || echo ""', returnStdout: true).trim()
+                    def latestCommit = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
 
-                    if (mergeCheck) {
-                        echo "Merge detected! Running terraform apply..."
-                        sh '''
-                        terraform apply -auto-approve tfplan
-                        '''
+                    if (!prevCommit) {
+                        echo "No previous successful commit found. Running terraform apply..."
+                        sh 'terraform apply -auto-approve tfplan'
+                        slackNotification("Terraform apply successful! ")
+                    } else if (prevCommit != latestCommit) {
+                        echo "Changes detected! Running terraform apply..."
+                        sh 'terraform apply -auto-approve tfplan'
                         slackNotification("Terraform apply successful! ")
                     } else {
-                        echo "No merge detected. Skipping terraform apply."
+                        echo "No changes detected. Skipping terraform apply."
                     }
                 }
             }

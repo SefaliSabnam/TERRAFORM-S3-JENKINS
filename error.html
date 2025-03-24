@@ -1,9 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Page Not Found</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - Sefali</title>
+    <style>
+        /* General Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            line-height: 1.6;
+            font-size: 16px;
+            background-color: #f5f5f5;
+            color: #333;
+            padding: 20px;
+        }
+
+        /* Header and Navigation */
+        header {
+            background-color: #333;
+            padding: 10px 0;
+        }
+
+        nav ul {
+            list-style-type: none;
+            display: flex;
+            justify-content: center;
+        }
+
+        nav ul li {
+            margin: 0 15px;
+        }
+
+        nav ul li a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        nav ul li a:hover {
+            text-decoration: underline;
+        }
+
+        /* Error Section */
+        .error {
+            background-color: #e74c3c;
+            color: white;
+            text-align: center;
+            padding: 50px 20px;
+            margin-bottom: 20px;
+        }
+
+        .error h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .error p {
+            font-size: 1.2em;
+        }
+
+        .error .button {
+            background-color: #fff;
+            color: #e74c3c;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 20px;
+            display: inline-block;
+        }
+
+        .error .button:hover {
+            background-color: #ddd;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #333;
+            color: white;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>404 - Page Not Found</h1>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="#">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Blog</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="error">
+            <h1>404 - Page Not Found</h1>
+            <p>Sorry, the page you are looking for does not exist.</p>
+            <a href="#" class="button">Go Back Home</a>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Sefali. All rights reserved.</p>
+    </footer>
 </body>
 </html>
+
