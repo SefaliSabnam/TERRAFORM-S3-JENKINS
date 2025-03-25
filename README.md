@@ -1,122 +1,102 @@
-AWS S3 STATIC WEBSITE HOSTING WITH TERRAFORM AND JENKINS:
-========================================================
+# AWS S3 STATIC WEBSITE HOSTING WITH TERRAFORM AND JENKINS
 
-PROJECT OVERVIEW:
-=================
+
+## PROJECT OVERVIEW
+
 This project automates the deployment of a static website on AWS S3 using Terraform, with a Jenkins multi-branch pipeline for continuous deployment. The website is hosted on an S3 bucket and configured for public access. Terraform is used for infrastructure provisioning, and Jenkins automates the deployment process.
 
-What is Terraform?
-==================
+## TABLE OF CONTENTS
 
-Terraform is an open-source infrastructure as a code (IAC) tool that allows to create, manage & deploy the production-ready environment. Terraform codifies cloud APIs into declarative configuration files. Terraform can manage both existing service providers and custom in-house solutions.
+- [ARCHITECTURE](#architecture)
+- [PREREQUISITES](#prerequisites)
+- [PROJECT STRUCTURE](#project-structure)
+- [TERRAFORM SETUP](#terraform-setup)
+- [JENKINS AUTOMATION](#jenkins-automation)
+- [DEPLOYMENT WORKFLOW](#deployment-workflow)
+- [EXPECTED OUTPUT](#expected-output)
+- [DESTROYING THE INFRASTRUCTURE](#destroying-the-infrastructure)
+- [LICENSE](#license)
+- [CONTRIBUTION](#contribution)
 
+## ARCHITECTURE
 
-ARCHITECTURE:
-=============
-
-![alt text](<terraform s3.drawio (1).png>)
- 
-The architecture consists of the following components:
-•	GitHub: Stores Terraform and Jenkins configuration files.
-•	Visual Studio Code: Used for writing and managing Terraform and Jenkins files.
-•	Jenkins: Triggers the Terraform deployment process upon code merge.
-•	Terraform: Provisions the AWS resources, including IAM roles and S3 buckets.
-•	AWS Cloud (ap-south-1): Hosts the S3 bucket containing the static website files.
-•	IAM Policy: Manages access to AWS resources.
-•	HTML Files: The website content is stored in the S3 bucket and served publicly.
+![Architecture Diagram](terraform%20s3.drawio%20(1).png)
 
 
+- **GITHUB**: Stores Terraform and Jenkins configuration files.
+- **VISUAL STUDIO CODE**: Used for writing and managing Terraform and Jenkins files.
+- **JENKINS**: Triggers the Terraform deployment process upon code merge.
+- **TERRAFORM**: Provisions the AWS resources, including IAM roles and S3 buckets.
+- **AWS CLOUD (AP-SOUTH-1)**: Hosts the S3 bucket containing the static website files.
+- **IAM POLICY**: Manages access to AWS resources.
+- **HTML FILES**: The website content is stored in the S3 bucket and served publicly.
 
-TECHNOLOGY STACK:
-================
-•	AWS Services: S3, IAM
-•	Terraform: Infrastructure as Code (IaC)
-•	Jenkins: CI/CD automation
-•	GitHub: Source code repository
-•	HTML & CSS: Website content
-•	VISUAL STUDIO
+## PREREQUISITES
 
-PROJECT STRUCTURE:
-==================
+- Install [TERRAFORM](https://developer.hashicorp.com/terraform/downloads)
+- Install [JENKINS](https://www.jenkins.io/doc/book/installing/)
+- Configure [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
 
-├── index.html           # Main HTML file for the website
-├── error.html           # Custom error page
-├── main.tf              # Terraform configuration
-├── provider.tf          # Terraform provider settings
-├── variables.tf         # Terraform variables
-├── Jenkinsfile          # Jenkins pipeline definition
-├── README.docx          # Project documentationWorkflow
+## PROJECT STRUCTURE
 
+├── index.html # Main HTML file for the website 
+├── error.html # Custom error page 
+├── main.tf # Terraform configuration 
+├── provider.tf # Terraform provider settings 
+├── variables.tf # Terraform variables 
+├── backend.tf # Terraform backend configuration 
+├── output.tf # Terraform output definitions 
+├── Jenkinsfile # Jenkins pipeline definition 
+├── README.docx # Project documentation
 
-1. Infrastructure Setup with Terraform
-=======================================
-•	Define the AWS provider and required variables in provider.tf and variables.tf.
-•	Create an S3 bucket for static website hosting in main.tf.
-•	Configure public access and bucket policies.
-•	Upload index.html and error.html to the S3 bucket.
-•	Store the Terraform state file in an S3 backend (if applicable).
+## TERRAFORM SETUP
+- Define the AWS provider and required variables in `provider.tf` and `variables.tf`.
+- Create an S3 bucket for static website hosting in `main.tf`.
+- Configure public access and bucket policies.
+- Upload `index.html` and `error.html` to the S3 bucket.
+- Store the Terraform state file in an S3 backend (if applicable).
 
+## JENKINS AUTOMATION
+- Add the repository to Jenkins.
+- Set up a multibranch pipeline.
+- Use the provided `Jenkinsfile` for automation.
 
-2. CI/CD with Jenkins
-=====================
-•	Jenkins fetches the Terraform code from GitHub.
-•	Runs Terraform commands (init, apply) to create/update infrastructure.
-•	Deploys website files (index.html, error.html) to S3.
+## DEPLOYMENT WORKFLOW
+1. Jenkins fetches the Terraform code from GitHub.
+2. Runs Terraform commands (`init`, `apply`) to create/update infrastructure.
+3. Deploys website files (`index.html`, `error.html`) to S3.
+4. Validate website availability via the S3 static website URL.
+5. Use AWS CloudWatch for monitoring and logging.
 
+## EXPECTED OUTPUT
+Once the deployment is successful, the following outputs are expected:
 
-3. Deployment & Monitoring
-==========================
-•	Validate website availability via the S3 static website URL.
-•	Use AWS CloudWatch for monitoring and logging.
+- **Terraform Output**:
+  - S3 bucket is successfully created.
+  - Website files (`index.html`, `error.html`) are uploaded.
+  - Public access is enabled, allowing users to view the site.
+  - Terraform state file is stored in the configured S3 backend.
 
+- **Jenkins Pipeline Output**:
+  - The pipeline successfully initializes, validates, and applies the Terraform configuration.
+  - Website files are deployed to S3.
+  - Terraform state file upload confirmation in the logs.
+  - Confirmation message showing a successful deployment.
 
-SETUP INSTRUCTIONS:
-===================
+- **Website Access**:
+  - Open the provided S3 static website URL in a browser.
+  - The homepage (`index.html`) should be displayed.
+  - Navigating to a non-existent page should show the custom `error.html` page.
 
-1. Install Prerequisites
-•	Install Terraform (Download)
-•	Install Jenkins (Setup Guide)
-•	Configure AWS CLI 
-
-2. Clone the Repository
-git clone <repository_url>
-cd <project_directory>
-
-3. Configure AWS Credentials
-export AWS_ACCESS_KEY_ID=your-access-key
-export AWS_SECRET_ACCESS_KEY=your-secret-key
-
-4. Initialize and Apply Terraform
-cd terraform
-terraform init
-terraform apply -auto-approve
-
-5. Configure Jenkins Pipeline
-•	Add the repository to Jenkins.
-•	Set up a multibranch pipeline.
-•	Use the provided Jenkinsfile for automation.
-
-6. Access the Deployed Website
-•	Retrieve the S3 static website URL from Terraform output.
-•	Open it in a browser to verify deployment.
-
-EXPECTED OUTCOME:
-================
-•	A publicly accessible static website hosted on AWS S3.
-•	Automated deployment using Jenkins.
-•	Infrastructure managed efficiently with Terraform.
-
-CLEANUP:
-========
+## DESTROYING THE INFRASTRUCTURE
 To remove all AWS resources created by Terraform:
+```sh
 terraform destroy -auto-approve
 
-License
-=======
-This project is licensed under the MIT License. See LICENSE for details.
 
-Contribution
-============
-Feel free to contribute to this project by submitting pull requests.
+## LICENSE
+This project is licensed under the [MIT License](LICENSE).
 
+## CONTRIBUTION
 
+Contributions are welcome! Feel free to submit pull requests to enhance this project.
