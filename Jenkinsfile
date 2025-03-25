@@ -1,83 +1,57 @@
 pipeline {
     agent any
-
     environment {
-        AWS_REGION = 'us-east-1'  // AWS region from Terraform variable
-        BUCKET_NAME = 'sefali-terraform-bucket'  // S3 bucket name from Terraform variable
-        SLACK_CHANNEL = '#jenkins'  // Slack channel name
-        SLACK_WEBHOOK_URL = credentials('slack-webhook')  // Jenkins credential ID for Slack
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID_1')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_ACCESS_KEY_ID_1')
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Terraform Init') {
             steps {
                 script {
-                    echo "Checking out the repository..."
-                    checkout scm
+                    def initStatus = sh(script: 'terraform init -migrate-state', returnStatus: true)
+                    if (initStatus != 0) {
+                        echo "Backend configuration changed. Running terraform init -reconfigure..."
+                        sh 'terraform init -reconfigure'
+                    }
                 }
             }
         }
 
-        stage('Initialize Terraform') {
+        stage('Terraform Plan') {
             steps {
                 script {
-                    echo "Initializing Terraform..."
-                    sh 'terraform init'
-                }
-            }
-        }
-
-        stage('Validate Terraform') {
-            steps {
-                script {
-                    echo "Validating Terraform files..."
-                    sh 'terraform validate'
-                }
-            }
-        }
-
-        stage('Plan Terraform') {
-            steps {
-                script {
-                    echo "Running Terraform plan..."
                     sh 'terraform plan -out=tfplan'
                 }
             }
         }
 
-        stage('Apply Terraform for Main') {
+        stage('Merge Check and Apply') {
             when {
                 branch 'main'
             }
             steps {
                 script {
-                    echo "Applying Terraform to deploy infrastructure..."
-                    sh 'terraform apply -auto-approve tfplan'
-                }
-            }
-        }
+                    def prevCommit = sh(script: 'git rev-parse --verify --quiet $GIT_PREVIOUS_SUCCESSFUL_COMMIT || echo ""', returnStdout: true).trim()
+                    def latestCommit = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
 
-        stage('Apply Terraform for Feature') {
-            when {
-                branch 'feature'
-            }
-            steps {
-                script {
-                    echo "Applying Terraform for feature branch (Staging)..."
-                    sh 'terraform apply -auto-approve tfplan'
-                }
-            }
-        }
-
-        stage('Skip Deployment for Other Branches') {
-            when {
-                expression {
-                    env.BRANCH_NAME != 'main' && env.BRANCH_NAME != 'feature'
-                }
-            }
-            steps {
-                script {
-                    echo "Skipping Terraform apply for branch: ${env.BRANCH_NAME}"
+                    if (!prevCommit) {
+                        echo "No previous successful commit found. Running terraform apply..."
+                        sh 'terraform apply -auto-approve tfplan'
+                        slackNotification("Terraform apply successful! ")
+                    } else if (prevCommit != latestCommit) {
+                        echo "Changes detected! Running terraform apply..."
+                        sh 'terraform apply -auto-approve tfplan'
+                        slackNotification("Terraform apply successful! ")
+                    } else {
+                        echo "No changes detected. Skipping terraform apply."
+                    }
                 }
             }
         }
@@ -86,29 +60,17 @@ pipeline {
     post {
         success {
             script {
-                echo "Terraform Deployment Successful!"
-                slackSend(
-                    channel: "${SLACK_CHANNEL}",
-                    color: 'good',
-                    message: " *Terraform Deployment Succeeded!* :rocket:\nBranch: *${env.BRANCH_NAME}*"
-                )
+                slackNotification("Terraform deployment successful! ")
             }
         }
         failure {
             script {
-                echo " Terraform Deployment Failed!"
-                slackSend(
-                    channel: "${SLACK_CHANNEL}",
-                    color: 'danger',
-                    message: "*Terraform Deployment Failed!* :x:\nBranch: *${env.BRANCH_NAME}*"
-                )
-            }
-        }
-        always {
-            script {
-                echo " Cleaning up workspace..."
-                cleanWs()
+                slackNotification("Terraform deployment failed! ")
             }
         }
     }
+}
+
+def slackNotification(message) {
+    slackSend(channel: '#jenkins', message: message)
 }
